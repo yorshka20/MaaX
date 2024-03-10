@@ -1,8 +1,8 @@
 import { Singleton } from '@common/function/singletonDecorator'
 import { $ } from '@main/utils/shell'
 import type { Device, Emulator, EmulatorAdapter } from '@type/device'
-import psList from 'ps-list'
 
+// import psList from 'ps-list'
 import { defaultAdbPath, getDeviceUuid, parseAdbDevice } from '../utils'
 
 @Singleton
@@ -14,6 +14,10 @@ class MacEmulator implements EmulatorAdapter {
   protected async getMumu(): Promise<void> {}
 
   protected async getLd(): Promise<void> {}
+
+  protected async getPlayCover(): Promise<void> {
+    console.log('playCover', this)
+  }
 
   async getAdbDevices(): Promise<Device[]> {
     const { stdout } = await $`${defaultAdbPath} devices`
@@ -28,8 +32,31 @@ class MacEmulator implements EmulatorAdapter {
 
   async getEmulators(): Promise<Emulator[]> {
     const emulator: Emulator[] = []
-    const processes = await psList()
+    const psList = await import('ps-list')
+    const processes = await psList.default()
     processes.forEach(process => console.log(process))
+    const possiblePs = processes.filter(i => (i.cpu || 0) > 1)
+    console.log('possiblePs', possiblePs.length)
+    const filtered = possiblePs.filter(i => {
+      const cmd = i.cmd?.toLocaleLowerCase() || ''
+      console.log('cmd', cmd)
+      return cmd.includes('playcover') || cmd.includes('arknight')
+    })
+    for (const p of filtered) {
+      if (p.cmd?.toLocaleLowerCase().includes('playcover')) {
+        emulator.push({
+          pname: 'PlayCover',
+          pid: p.pid,
+        })
+      }
+      if (p.cmd?.toLocaleLowerCase().includes('arknight')) {
+        emulator.push({
+          pname: 'Arknight',
+          pid: p.pid,
+        })
+      }
+    }
+    console.log('getMacEmulators', emulator)
     return emulator
   }
 }
